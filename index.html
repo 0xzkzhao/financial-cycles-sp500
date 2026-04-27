@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Cycles & S&P 500</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f7fa;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 10px 15px;
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            z-index: 20;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        h1 {
+            font-size: 1.25em;
+            margin: 0 0 4px 0;
+            color: #333;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 0.9em;
+            margin: 0;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            width: 100vw;
+        }
+
+        .left-panel {
+            width: 42%;
+            min-width: 400px;
+            max-width: 65%;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: hidden;
+        }
+
+        .resizer {
+            width: 4px;
+            background-color: #e4e7ed;
+            cursor: col-resize;
+            transition: background-color 0.2s;
+            z-index: 15;
+            flex-shrink: 0;
+        }
+
+        .resizer:hover,
+        .resizer.resizing {
+            background-color: #409eff;
+        }
+
+        .right-panel {
+            flex: 1;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            background: #f5f7fa;
+            box-sizing: border-box;
+            min-width: 400px;
+            overflow: hidden;
+        }
+
+        #main-chart {
+            flex: 1;
+            width: 100%;
+            background: #fff;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+            min-height: 0;
+            padding: 5px;
+        }
+
+        .table-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .filter-controls {
+            margin-bottom: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            border: 1px solid #dcdfe6;
+            background-color: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            color: #606266;
+            font-size: 13px;
+        }
+
+        .filter-btn:hover {
+            color: #409eff;
+            border-color: #c6e2ff;
+            background-color: #ecf5ff;
+        }
+
+        .filter-btn.active {
+            color: #fff;
+            background-color: #409eff;
+            border-color: #409eff;
+        }
+
+        .chart-type-select {
+            padding: 6px 10px;
+            border: 1px solid #dcdfe6;
+            background-color: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+            color: #606266;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .chart-type-select:hover {
+            border-color: #c6e2ff;
+            background-color: #ecf5ff;
+        }
+
+        .reset-btn {
+            padding: 2px 4px;
+            border: none;
+            background: transparent;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reset-btn:hover {
+            color: #409eff;
+        }
+
+        .table-scroll {
+            overflow-y: auto;
+            flex: 1;
+            margin-right: -10px;
+            padding-right: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #ebeef5;
+            padding: 12px 10px;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #303133;
+            position: sticky;
+            top: 0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+
+        th.sortable:hover {
+            background-color: #e4e7ed;
+        }
+
+        .sort-icon {
+            font-size: 1em;
+            margin-left: 4px;
+            color: #909399;
+            display: inline-block;
+            width: 12px;
+        }
+
+        tr {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        tr:hover {
+            background-color: #f5f7fa;
+        }
+
+        tr.active-row {
+            background-color: #ecf5ff;
+            outline: 1px solid #409eff;
+            outline-offset: -1px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div>
+            <h1>Financial Cycles & S&P 500</h1>
+        </div>
+        <div style="font-size: 13px; color: #666; text-align: right; line-height: 1.5;">
+            <div><span style="color: #ee6666; font-weight: bold;">🔴 Red Shading</span>: Bear Market (Decline ≥ 20%)
+                &nbsp;|&nbsp; <span style="color: #7cb5ec; font-weight: bold;">🔵 Blue Shading</span>: Correction
+                (10%-20%) &nbsp;|&nbsp; 🟡 Yellow: Recovery
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="left-panel" id="left-panel">
+            <div class="table-container">
+                <div class="filter-controls">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <button class="filter-btn" data-filter="all">All</button>
+                        <button class="filter-btn active" data-filter="large">Bears</button>
+                        <button class="filter-btn" data-filter="small">Corrections</button>
+                    </div>
+                    <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+                        <select class="chart-type-select" id="chart-type-select" title="Switch chart perspective">
+                            <option value="price">Index View</option>
+                            <option value="cycle">Cycle View</option>
+                            <option value="compare">Drawdown Comp</option>
+                        </select>
+                        <button class="reset-btn" id="reset-zoom-btn" title="Reset to default view">↺</button>
+                    </div>
+                </div>
+                <div class="table-scroll">
+                    <table id="cycle-table">
+                        <thead>
+                            <tr>
+                                <th width="18%" class="sortable" data-sort="time" title="Sort by time">Cycle <span
+                                        class="sort-icon"></span></th>
+                                <th width="23%" class="sortable" data-sort="drop" title="Sort by drawdown duration">
+                                    Time<br /><span style="font-weight:normal;font-size:0.85em;color:#666;">(m)</span>
+                                    <span class="sort-icon"></span>
+                                </th>
+                                <th width="15%" class="sortable" data-sort="decline" title="Sort by decline percentage">
+                                    Drawdown<br /><span style="font-weight:normal;font-size:0.85em;color:#666;">(Lost
+                                        Yrs)</span> <span class="sort-icon"></span></th>
+                                <th width="15%" class="sortable" data-sort="recover" title="Sort by recovery duration">
+                                    Recovery<br /><span
+                                        style="font-weight:normal;font-size:0.85em;color:#666;">(m)</span> <span
+                                        class="sort-icon"></span></th>
+                                <th width="29%">Main Cause</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="resizer" id="dragMe"></div>
+
+        <div class="right-panel" id="right-panel">
+            <div id="main-chart"></div>
+        </div>
+    </div>
+
+    <script src="./financial_cycles_data.js"></script>
+    <script src="./financial_cycles_table_data.js"></script>
+    <script>
+        // Data loading check
+        if (!window.sp500Dates || !window.sp500Prices) {
+            throw new Error('financial_cycles_data.js not loaded or invalid format.');
+        }
+        if (!window.financialCyclesTableData || !Array.isArray(window.financialCyclesTableData.bearMarkets)) {
+            throw new Error('financial_cycles_table_data.js not loaded, unable to initialize.');
+        }
+
+        const formatNumber = (value) => Number(value).toLocaleString('en-US', {
+            maximumFractionDigits: 2,
+            minimumFractionDigits: 0
+        });
+
+        // Helper: Get date index (supports YYYY-MM matching YYYY-MM-DD)
+        function getDateIndex(dateStr) {
+            if (!dateStr) return -1;
+            let idx = sp500Dates.indexOf(dateStr);
+            if (idx !== -1) return idx;
+            return sp500Dates.findIndex(d => d.startsWith(dateStr));
+        }
+
+        // Helper: Get end index of a cycle
+        function getDateEndIndex(dateStr) {
+            if (!dateStr) return -1;
+            let firstIdx = getDateIndex(dateStr);
+            if (firstIdx === -1) return -1;
+
+            let lastIdx = firstIdx;
+            for (let i = firstIdx + 1; i < sp500Dates.length; i++) {
+                if (sp500Dates[i].startsWith(dateStr)) {
+                    lastIdx = i;
+                } else {
+                    break;
+                }
+            }
+            return lastIdx;
+        }
+
+        const bearMarkets = window.financialCyclesTableData.bearMarkets.map((cycle) => ({ ...cycle }));
+
+        const rawData = window.financialCyclesData.sp500Weekly || window.financialCyclesData.sp500Monthly;
+        const sp500Lows = rawData.map((item) => item.low);
+        const sp500Highs = rawData.map((item) => item.high);
+        const sp500RangeSpans = rawData.map((item) => item.high - item.low);
+        const closeSeriesId = 'sp500-close-series';
+
+        // --- Cycle mode data calculation ---
+        let currentChartType = 'price';
+        function calculateCycleData() {
+            const data = new Array(sp500Dates.length).fill(0);
+            const cycleNames = new Array(sp500Dates.length).fill('');
+            const bms = bearMarkets.filter(bm => bm.type === 'large').sort((a, b) => a.start.localeCompare(b.start));
+
+            let lastTroughIdx = 0;
+            let lastTroughVal = sp500Prices[0];
+            let lastCycleName = 'Post-WWII Growth';
+
+            for (let i = 0; i < bms.length; i++) {
+                const bm = bms[i];
+                const startIdx = getDateIndex(bm.start);
+                const troughIdx = getDateEndIndex(bm.trough);
+
+                if (startIdx === -1) continue;
+
+                // Bull market phase
+                for (let j = lastTroughIdx; j < startIdx; j++) {
+                    data[j] = ((sp500Prices[j] / lastTroughVal) - 1) * 100;
+                    cycleNames[j] = lastCycleName + ' Bull Market';
+                }
+
+                // Bear market phase
+                if (troughIdx !== -1) {
+                    for (let j = startIdx; j <= troughIdx; j++) {
+                        let val = ((sp500Prices[j] / bm.peakVal) - 1) * 100;
+                        data[j] = Math.min(0, val);
+                        cycleNames[j] = bm.name + ' (Drawdown)';
+                    }
+                    lastTroughIdx = troughIdx;
+                    lastTroughVal = bm.troughVal;
+                    lastCycleName = bm.name;
+                } else {
+                    lastTroughIdx = startIdx;
+                }
+            }
+            for (let j = lastTroughIdx; j < sp500Dates.length; j++) {
+                data[j] = ((sp500Prices[j] / lastTroughVal) - 1) * 100;
+                cycleNames[j] = lastCycleName + ' Bull Market';
+            }
+            return { data, cycleNames };
+        }
+        const cycleDataObj = calculateCycleData();
+
+        function getCompareSeries(filterType) {
+            let filtered = bearMarkets.filter(bm => filterType === 'all' || bm.type === filterType);
+            let series = [];
+
+            filtered.forEach(bm => {
+                let startIdx = getDateIndex(bm.start);
+                let actualEndIdx = getDateEndIndex(bm.recoveryEnd);
+                if (actualEndIdx === -1) {
+                    actualEndIdx = sp500Dates.length - 1;
+                }
+
+                let data = [];
+                for (let i = startIdx; i <= actualEndIdx; i++) {
+                    let weeks = i - startIdx;
+                    let val = ((sp500Prices[i] / bm.peakVal) - 1) * 100;
+                    data.push([weeks, val]);
+                    if (val >= 0 && i > startIdx) break;
+                }
+
+                series.push({
+                    name: bm.name,
+                    type: 'line',
+                    showSymbol: false,
+                    data: data,
+                    lineStyle: { width: 1.5, opacity: 0.7 },
+                    emphasis: { lineStyle: { width: 3, opacity: 1 }, focus: 'series' }
+                });
+            });
+            return series;
+        }
+
+        var chartDom = document.getElementById('main-chart');
+        var myChart = echarts.init(chartDom);
+
+        function getMonthSpan(startMonth, endMonth) {
+            const startIdx = getDateIndex(startMonth);
+            const endIdx = getDateEndIndex(endMonth);
+            if (startIdx === -1 || endIdx === -1) return 0;
+            return Math.round((endIdx - startIdx + 1) / 4.33);
+        }
+
+        const commonGrid = { left: '2%', right: '4%', top: '8%', bottom: '12%', containLabel: true };
+        const compareGrid = { left: '2%', right: '18%', top: '8%', bottom: '12%', containLabel: true };
+
+        function shouldShowDeclineLabel(bm, filterType) {
+            if (bm.type === 'large') return true;
+            if (filterType === 'all') return false;
+            return bm.decline >= 14 || getMonthSpan(bm.start, bm.trough) >= 4;
+        }
+
+        function shouldShowRecoveryLabel(bm, filterType) {
+            if (bm.type !== 'large' || filterType === 'small') return false;
+            return getMonthSpan(bm.trough, bm.recoveryEnd) >= 6;
+        }
+
+        function getDeclineLabelText(bm, filterType) {
+            if (!shouldShowDeclineLabel(bm, filterType)) return '';
+            return filterType === 'all' ? bm.name : `${bm.name}\nDrawdown: -${bm.decline}%`;
+        }
+
+        function getMarkAreaData(filterType) {
+            let data = [];
+            bearMarkets.forEach(bm => {
+                if (filterType !== 'all' && bm.type !== filterType) return;
+                const isLarge = bm.type === 'large';
+                const dropColor = isLarge ? 'rgba(238, 102, 102, 0.25)' : 'rgba(124, 181, 236, 0.15)';
+                const labelColor = isLarge ? '#c23531' : '#4b8bbb';
+                const recoveryColor = isLarge ? 'rgba(250, 200, 88, 0.2)' : 'rgba(250, 200, 88, 0.08)';
+
+                const startDate = sp500Dates[getDateIndex(bm.start)];
+                const troughDate = sp500Dates[getDateEndIndex(bm.trough)];
+                const recoveryEndDate = sp500Dates[getDateEndIndex(bm.recoveryEnd)];
+
+                if (!startDate || !troughDate) return;
+
+                data.push([
+                    {
+                        name: getDeclineLabelText(bm, filterType),
+                        xAxis: startDate,
+                        cycleName: bm.name,
+                        itemStyle: { color: dropColor },
+                        label: { color: labelColor }
+                    },
+                    { xAxis: troughDate }
+                ]);
+
+                if (recoveryEndDate) {
+                    data.push([
+                        {
+                            name: shouldShowRecoveryLabel(bm, filterType) ? 'Recovery' : '',
+                            xAxis: troughDate,
+                            cycleName: bm.name,
+                            itemStyle: { color: recoveryColor },
+                            label: { color: '#e6a23c' }
+                        },
+                        { xAxis: recoveryEndDate }
+                    ]);
+                }
+            });
+            return data;
+        }
+
+        const commonDataZoom = [
+            { type: 'slider', show: true, start: 0, end: 100 },
+            { type: 'inside', start: 0, end: 100 }
+        ];
+
+        const commonToolbox = {
+            feature: {
+                dataZoom: { yAxisIndex: 'none' },
+                restore: {},
+                saveAsImage: {}
+            }
+        };
+
+        var option = {
+            grid: commonGrid,
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross' },
+                formatter: function (params) {
+                    let date = params[0].axisValue;
+                    let candle = window.sp500MonthlyMap ? window.sp500MonthlyMap[date] : null;
+                    let tooltipHtml = `<strong>${date}</strong>`;
+
+                    if (candle) {
+                        tooltipHtml += `<br/>Weekly OHLC: ${formatNumber(candle.open)} / ${formatNumber(candle.high)} / ${formatNumber(candle.low)} / ${formatNumber(candle.close)}`;
+                    }
+
+                    for (let i = 0; i < bearMarkets.length; i++) {
+                        let bm = bearMarkets[i];
+                        if (date >= bm.start && date.substring(0, bm.trough.length) <= bm.trough) {
+                            let typeStr = bm.type === 'large' ? 'Bear Market (≥20%)' : 'Correction (10%-20%)';
+                            tooltipHtml += `<br/><br/><strong>In [${bm.name}] Drawdown</strong><br/>Type: ${typeStr}<br/>Cause: ${bm.reason}<br/>Max Drawdown: -${bm.decline}%`;
+                            break;
+                        }
+                        else if (bm.recoveryEnd && date > bm.trough && date.substring(0, bm.recoveryEnd.length) <= bm.recoveryEnd) {
+                            let recoverText = bm.recovered === false ? 'Ongoing; yet to recover previous peak' : 'Recovering from trough to previous peak';
+                            tooltipHtml += `<br/><br/><strong>In [${bm.name}] Recovery</strong><br/>${recoverText}`;
+                            break;
+                        }
+                    }
+                    return tooltipHtml;
+                }
+            },
+            toolbox: commonToolbox,
+            dataZoom: commonDataZoom,
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: sp500Dates
+            },
+            yAxis: {
+                type: 'log',
+                position: 'right',
+                name: 'S&P 500',
+                axisLabel: {
+                    formatter: function (value) {
+                        return formatNumber(value);
+                    }
+                },
+                axisPointer: {
+                    label: {
+                        formatter: function (params) {
+                            return formatNumber(params.value);
+                        }
+                    }
+                },
+                logBase: 10
+            },
+            series: [
+                {
+                    name: 'Weekly Low Baseline',
+                    type: 'line',
+                    stack: 'price-range',
+                    symbol: 'none',
+                    silent: true,
+                    lineStyle: { opacity: 0 },
+                    areaStyle: { opacity: 0 },
+                    emphasis: { disabled: true },
+                    tooltip: { show: false },
+                    data: sp500Lows
+                },
+                {
+                    name: 'Weekly Range',
+                    type: 'line',
+                    stack: 'price-range',
+                    symbol: 'none',
+                    silent: true,
+                    lineStyle: { width: 0 },
+                    areaStyle: { color: 'rgba(84, 112, 198, 0.16)' },
+                    emphasis: { disabled: true },
+                    tooltip: { show: false },
+                    data: sp500RangeSpans
+                },
+                {
+                    id: closeSeriesId,
+                    name: 'Weekly Close',
+                    type: 'line',
+                    symbol: 'none',
+                    itemStyle: { color: '#5470c6' },
+                    lineStyle: { width: 2.2 },
+                    data: sp500Prices,
+                    markArea: {
+                        itemStyle: { color: 'rgba(255, 173, 177, 0.4)' },
+                        label: {
+                            position: 'insideTop',
+                            color: '#333',
+                            fontSize: 11
+                        },
+                        data: getMarkAreaData('large')
+                    }
+                }
+            ]
+        };
+
+        myChart.setOption(option);
+        updateYAxisForRange(0, sp500Dates.length - 1);
+
+        document.getElementById('chart-type-select').addEventListener('change', function () {
+            currentChartType = this.value;
+            const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+
+            myChart.dispatchAction({
+                type: 'dataZoom',
+                start: 0,
+                end: 100
+            });
+
+            if (currentChartType === 'price') {
+                myChart.setOption({
+                    grid: commonGrid,
+                    legend: { show: false },
+                    toolbox: commonToolbox,
+                    dataZoom: commonDataZoom,
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function (params) {
+                            let date = params[0].axisValue;
+                            let candle = window.sp500MonthlyMap ? window.sp500MonthlyMap[date] : null;
+                            let tooltipHtml = `<strong>${date}</strong>`;
+                            if (candle) {
+                                tooltipHtml += `<br/>Weekly OHLC: ${formatNumber(candle.open)} / ${formatNumber(candle.high)} / ${formatNumber(candle.low)} / ${formatNumber(candle.close)}`;
+                            }
+                            for (let i = 0; i < bearMarkets.length; i++) {
+                                let bm = bearMarkets[i];
+                                if (date >= bm.start && date.substring(0, bm.trough.length) <= bm.trough) {
+                                    let typeStr = bm.type === 'large' ? 'Bear Market (≥20%)' : 'Correction (10%-20%)';
+                                    tooltipHtml += `<br/><br/><strong>In [${bm.name}] Drawdown</strong><br/>Type: ${typeStr}<br/>Cause: ${bm.reason}<br/>Max Drawdown: -${bm.decline}%`;
+                                    break;
+                                } else if (bm.recoveryEnd && date > bm.trough && date.substring(0, bm.recoveryEnd.length) <= bm.recoveryEnd) {
+                                    let recoverText = bm.recovered === false ? 'Ongoing; yet to recover previous peak' : 'Recovering from trough to previous peak';
+                                    tooltipHtml += `<br/><br/><strong>In [${bm.name}] Recovery</strong><br/>${recoverText}`;
+                                    break;
+                                }
+                            }
+                            return tooltipHtml;
+                        }
+                    },
+                    xAxis: { type: 'category', data: sp500Dates, name: '' },
+                    yAxis: {
+                        type: 'log',
+                        name: 'S&P 500',
+                        position: 'right',
+                        axisLabel: {
+                            formatter: function (value) {
+                                return formatNumber(value);
+                            }
+                        },
+                        axisPointer: {
+                            label: {
+                                formatter: function (params) {
+                                    return formatNumber(params.value);
+                                }
+                            }
+                        }
+                    },
+                    series: [
+                        { name: 'Weekly Low Baseline', data: sp500Lows, type: 'line', stack: 'price-range', symbol: 'none', silent: true, lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 } },
+                        { name: 'Weekly Range', data: sp500RangeSpans, type: 'line', stack: 'price-range', symbol: 'none', silent: true, lineStyle: { width: 0 }, areaStyle: { color: 'rgba(84, 112, 198, 0.16)' } },
+                        {
+                            id: closeSeriesId,
+                            name: 'Weekly Close',
+                            type: 'line',
+                            symbol: 'none',
+                            itemStyle: { color: '#5470c6' },
+                            lineStyle: { width: 2.2 },
+                            data: sp500Prices,
+                            areaStyle: { opacity: 0 },
+                            markArea: {
+                                data: getMarkAreaData(activeFilter),
+                                label: { show: labelsVisible }
+                            }
+                        }
+                    ]
+                }, true);
+            } else if (currentChartType === 'cycle') {
+                myChart.setOption({
+                    grid: commonGrid,
+                    legend: { show: false },
+                    toolbox: commonToolbox,
+                    dataZoom: commonDataZoom,
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function (params) {
+                            let date = params[0].axisValue;
+                            let idx = params[0].dataIndex;
+                            let val = cycleDataObj.data[idx];
+                            let cycleName = cycleDataObj.cycleNames[idx];
+                            let tooltipHtml = `<strong>${date}</strong><br/>`;
+                            tooltipHtml += `Phase: ${cycleName}<br/>`;
+                            tooltipHtml += `Magnitude: <span style="font-weight:bold;color:${val >= 0 ? '#ee6666' : '#5470c6'}">${val >= 0 ? '+' : ''}${val.toFixed(2)}%</span>`;
+                            return tooltipHtml;
+                        }
+                    },
+                    xAxis: { type: 'category', data: sp500Dates, name: '' },
+                    yAxis: {
+                        type: 'value',
+                        name: 'Return (%)',
+                        position: 'right',
+                        axisLabel: {
+                            formatter: function (value) {
+                                return formatNumber(value);
+                            }
+                        },
+                        axisPointer: {
+                            label: {
+                                formatter: function (params) {
+                                    return formatNumber(params.value);
+                                }
+                            }
+                        }
+                    },
+                    series: [
+                        { name: 'Monthly Low Baseline', data: [], type: 'line', symbol: 'none', silent: true, lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 } },
+                        { name: 'Monthly Range', data: [], type: 'line', symbol: 'none', silent: true, lineStyle: { width: 0 }, areaStyle: { opacity: 0 } },
+                        {
+                            id: closeSeriesId,
+                            name: 'Cycle Return',
+                            type: 'line',
+                            symbol: 'none',
+                            itemStyle: { color: '#5470c6' },
+                            lineStyle: { width: 2.2 },
+                            data: cycleDataObj.data,
+                            areaStyle: { opacity: 0 },
+                            markArea: {
+                                data: getMarkAreaData(activeFilter),
+                                label: { show: labelsVisible }
+                            }
+                        }
+                    ]
+                }, true);
+            } else if (currentChartType === 'compare') {
+                myChart.setOption({
+                    legend: {
+                        show: true,
+                        orient: 'vertical',
+                        right: 0,
+                        top: 'center',
+                        type: 'scroll',
+                        textStyle: { fontSize: 10 }
+                    },
+                    grid: compareGrid,
+                    toolbox: commonToolbox,
+                    dataZoom: commonDataZoom,
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function (params) {
+                            params.sort((a, b) => a.value[1] - b.value[1]);
+                            let weeks = params[0].value[0];
+                            let html = `<strong>Week ${weeks}</strong><br/>`;
+                            params.forEach(p => {
+                                html += `${p.marker} ${p.seriesName}: <b>${p.value[1].toFixed(2)}%</b><br/>`;
+                            });
+                            return html;
+                        }
+                    },
+                    xAxis: { type: 'value', name: 'Weeks', data: null },
+                    yAxis: {
+                        type: 'value',
+                        name: 'Drawdown (%)',
+                        position: 'right',
+                        axisLabel: {
+                            formatter: function (value) {
+                                return formatNumber(value);
+                            }
+                        },
+                        axisPointer: {
+                            label: {
+                                formatter: function (params) {
+                                    return formatNumber(params.value);
+                                }
+                            }
+                        }
+                    },
+                    series: getCompareSeries(activeFilter)
+                }, true);
+            }
+
+            const { startIdx, endIdx } = getVisibleIndexRangeFromZoom();
+            updateYAxisForRange(startIdx, endIdx);
+        });
+
+        let labelsVisible = true;
+
+        function updateLabelsVisibility(startIdx, endIdx) {
+            const visibleMonths = endIdx - startIdx;
+            const threshold = 300;
+            const shouldShow = visibleMonths < threshold;
+
+            if (shouldShow !== labelsVisible) {
+                labelsVisible = shouldShow;
+                myChart.setOption({
+                    series: [{
+                        id: closeSeriesId,
+                        markArea: {
+                            label: {
+                                show: labelsVisible
+                            }
+                        }
+                    }]
+                });
+            }
+        }
+
+        const initialRange = getVisibleIndexRangeFromZoom();
+        updateLabelsVisibility(initialRange.startIdx, initialRange.endIdx);
+
+        const tbody = document.querySelector('#cycle-table tbody');
+
+        let currentFocusedCycleName = null;
+
+        function setActiveRow(trElement) {
+            document.querySelectorAll('#cycle-table tr').forEach(row => row.classList.remove('active-row'));
+            if (trElement) {
+                trElement.classList.add('active-row');
+            }
+        }
+
+        function updateYAxisForRange(startIdx, endIdx) {
+            if (currentChartType === 'compare') {
+                return;
+            }
+            const safeStart = Math.max(0, Math.min(startIdx, endIdx));
+            const safeEnd = Math.min(sp500Dates.length - 1, Math.max(startIdx, endIdx));
+
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+
+            if (currentChartType === 'price') {
+                for (let i = safeStart; i <= safeEnd; i++) {
+                    const low = sp500Lows[i];
+                    const high = sp500Highs[i];
+                    if (Number.isFinite(low) && low > 0) minVal = Math.min(minVal, low);
+                    if (Number.isFinite(high) && high > 0) maxVal = Math.max(maxVal, high);
+                }
+            } else {
+                for (let i = safeStart; i <= safeEnd; i++) {
+                    const val = cycleDataObj.data[i];
+                    if (Number.isFinite(val)) {
+                        minVal = Math.min(minVal, val);
+                        maxVal = Math.max(maxVal, val);
+                    }
+                }
+            }
+
+            if (!Number.isFinite(minVal) || !Number.isFinite(maxVal)) {
+                return;
+            }
+
+            if (currentChartType === 'price') {
+                const ratio = Math.max(maxVal / minVal, 1.01);
+                const paddingFactor = Math.max(Math.pow(ratio, 0.08), 1.05);
+                myChart.setOption({
+                    yAxis: {
+                        type: 'log',
+                        min: minVal / paddingFactor,
+                        max: maxVal * paddingFactor
+                    }
+                });
+            } else {
+                const range = maxVal - minVal;
+                const padding = Math.max(range * 0.1, 5);
+                myChart.setOption({
+                    yAxis: {
+                        type: 'value',
+                        min: Math.floor(minVal - padding),
+                        max: Math.ceil(maxVal + padding)
+                    }
+                });
+            }
+        }
+
+        function getVisibleIndexRangeFromZoom() {
+            const dataZoomModel = myChart.getModel().getComponent('dataZoom', 0);
+            if (!dataZoomModel) {
+                return { startIdx: 0, endIdx: sp500Dates.length - 1 };
+            }
+
+            const percentRange = dataZoomModel.getPercentRange();
+            const totalPoints = sp500Dates.length - 1;
+
+            return {
+                startIdx: Math.max(0, Math.floor((percentRange[0] / 100) * totalPoints)),
+                endIdx: Math.min(totalPoints, Math.ceil((percentRange[1] / 100) * totalPoints))
+            };
+        }
+
+        function zoomToCycle(cycle, trElement) {
+            if (currentFocusedCycleName) {
+                myChart.dispatchAction({
+                    type: 'downplay',
+                    seriesName: currentFocusedCycleName
+                });
+            }
+
+            currentFocusedCycleName = cycle.name;
+            setActiveRow(trElement);
+
+            if (currentChartType === 'compare') {
+                myChart.dispatchAction({
+                    type: 'highlight',
+                    seriesName: cycle.name
+                });
+                return;
+            }
+
+            let startIdx = getDateIndex(cycle.start);
+            let endIdx = getDateEndIndex(cycle.recoveryEnd);
+
+            if (startIdx === -1) startIdx = 0;
+            if (endIdx === -1) endIdx = sp500Dates.length - 1;
+
+            let zoomStart = Math.max(0, startIdx - 60);
+            let zoomEnd = Math.min(sp500Dates.length - 1, endIdx + 60);
+            let totalLen = sp500Dates.length;
+            let startPercent = (zoomStart / totalLen) * 100;
+            let endPercent = (zoomEnd / totalLen) * 100;
+
+            myChart.dispatchAction({
+                type: 'dataZoom',
+                start: startPercent,
+                end: endPercent
+            });
+        }
+
+        let currentSort = { key: 'time', order: 'desc' };
+
+        function updateSortIcons() {
+            document.querySelectorAll('th.sortable .sort-icon').forEach(icon => {
+                icon.innerHTML = '⇅';
+                icon.style.color = '#c0c4cc';
+            });
+            const activeTh = document.querySelector(`th.sortable[data-sort="${currentSort.key}"]`);
+            if (activeTh) {
+                const icon = activeTh.querySelector('.sort-icon');
+                icon.innerHTML = currentSort.order === 'asc' ? '↑' : '↓';
+                icon.style.color = '#409eff';
+            }
+        }
+
+        function renderTable(filterType) {
+            tbody.innerHTML = '';
+
+            let filtered = bearMarkets.filter(bm => filterType === 'all' || bm.type === filterType);
+
+            filtered.sort((a, b) => {
+                let valA, valB;
+                if (currentSort.key === 'time') { valA = a.start; valB = b.start; }
+                else if (currentSort.key === 'drop') { valA = a.dropMonths; valB = b.dropMonths; }
+                else if (currentSort.key === 'decline') { valA = a.decline; valB = b.decline; }
+                else if (currentSort.key === 'recover') { valA = a.recoverMonths; valB = b.recoverMonths; }
+
+                if (valA === valB) return 0;
+                let comparison = typeof valA === 'string' ? valA.localeCompare(valB) : valA - valB;
+                return currentSort.order === 'asc' ? comparison : -comparison;
+            });
+
+            filtered.forEach(bm => {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-name', bm.name);
+                const isLarge = bm.type === 'large';
+                const typeLabel = isLarge
+                    ? '<span style="color:#ee6666; font-size:0.85em; padding:2px 6px; background:rgba(238,102,102,0.1); border-radius:4px; font-weight:normal;">🔴 Bear</span>'
+                    : '<span style="color:#4b8bbb; font-size:0.85em; padding:2px 6px; background:rgba(124,181,236,0.1); border-radius:4px; font-weight:normal;">🔵 Correction</span>';
+                const color = isLarge ? '#ee6666' : '#4b8bbb';
+                const recoverLabel = bm.recovered === false ? `${bm.recoveryEnd} (Ongoing)` : bm.recoveryEnd;
+
+                tr.innerHTML = `
+                    <td>
+                        <div style="font-weight: bold; margin-bottom: 6px; font-size: 1.05em;">${bm.name}</div>
+                        <div>${typeLabel}</div>
+                    </td>
+                    <td>
+                        <div style="margin-bottom: 4px; font-weight: bold; font-size: 0.95em;">${bm.start} &rarr; ${bm.trough} <span style="color:#888;font-weight:normal;font-size:0.9em;">(${bm.dropMonths})</span></div>
+                        <div style="font-family: monospace; color: #555; font-size: 1.05em;">${formatNumber(bm.peakVal)} &rarr; ${formatNumber(bm.troughVal)}</div>
+                    </td>
+                    <td>
+                        <div style="color: ${color}; font-weight: bold; font-size: 1.2em; margin-bottom: 4px;">-${bm.decline}%</div>
+                        <div style="font-size: 0.9em; color: #888;">${bm.yearsBack}</div>
+                    </td>
+                    <td>
+                        <div style="margin-bottom: 4px; font-weight: bold; font-size: 0.95em;">${recoverLabel}</div>
+                        <div style="font-size: 0.9em; color: #888;">(${bm.recoverMonths})</div>
+                    </td>
+                    <td style="font-size: 0.95em; color: #444; line-height: 1.4;">
+                        ${bm.reason}
+                    </td>
+                `;
+
+                if (bm.name === currentFocusedCycleName) {
+                    tr.classList.add('active-row');
+                }
+
+                tr.addEventListener('click', () => {
+                    zoomToCycle(bm, tr);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const sortKey = th.getAttribute('data-sort');
+                if (currentSort.key === sortKey) {
+                    currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.key = sortKey;
+                    currentSort.order = 'desc';
+                }
+                updateSortIcons();
+                const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+                renderTable(activeFilter);
+            });
+        });
+
+        updateSortIcons();
+        renderTable('large');
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                const filter = this.getAttribute('data-filter');
+                renderTable(filter);
+
+                if (currentChartType === 'compare') {
+                    myChart.setOption({
+                        series: getCompareSeries(filter)
+                    }, { replaceMerge: ['series'] });
+                } else {
+                    myChart.setOption({
+                        series: [{
+                            id: closeSeriesId,
+                            markArea: {
+                                data: getMarkAreaData(filter),
+                                label: {
+                                    show: labelsVisible
+                                }
+                            }
+                        }]
+                    });
+                }
+            });
+        });
+
+        document.getElementById('reset-zoom-btn').addEventListener('click', () => {
+            currentFocusedCycleName = null;
+            setActiveRow(null);
+            myChart.dispatchAction({
+                type: 'dataZoom',
+                start: 0,
+                end: 100
+            });
+        });
+
+        myChart.on('dataZoom', () => {
+            const { startIdx, endIdx } = getVisibleIndexRangeFromZoom();
+            updateYAxisForRange(startIdx, endIdx);
+            updateLabelsVisibility(startIdx, endIdx);
+        });
+
+        function highlightAndScrollToRow(cycleName) {
+            if (!cycleName) return;
+            const tr = document.querySelector(`tr[data-name="${cycleName}"]`);
+            if (tr) {
+                currentFocusedCycleName = cycleName;
+                setActiveRow(tr);
+                tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        myChart.on('click', function (params) {
+            let clickedCycleName = null;
+
+            if (params.componentType === 'markArea') {
+                if (params.data && params.data.cycleName) {
+                    clickedCycleName = params.data.cycleName;
+                }
+            } else if (params.componentType === 'series') {
+                if (currentChartType === 'compare') {
+                    clickedCycleName = params.seriesName;
+                } else {
+                    let date = params.name;
+                    for (let i = 0; i < bearMarkets.length; i++) {
+                        let bm = bearMarkets[i];
+                        let dateMonth = date.substring(0, 7);
+                        if (dateMonth >= bm.start && dateMonth <= (bm.recoveryEnd || bm.trough)) {
+                            clickedCycleName = bm.name;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (clickedCycleName) {
+                highlightAndScrollToRow(clickedCycleName);
+            }
+        });
+
+        const resizer = document.getElementById('dragMe');
+        const leftSide = document.getElementById('left-panel');
+        const rightSide = document.getElementById('right-panel');
+        let x = 0;
+        let leftWidth = 0;
+
+        const mouseDownHandler = function (e) {
+            x = e.clientX;
+            leftWidth = leftSide.getBoundingClientRect().width;
+
+            document.addEventListener('mousemove', mouseMoveHandler);
+            document.addEventListener('mouseup', mouseUpHandler);
+            resizer.classList.add('resizing');
+            document.body.style.cursor = 'col-resize';
+            leftSide.style.pointerEvents = 'none';
+            rightSide.style.pointerEvents = 'none';
+        };
+
+        const mouseMoveHandler = function (e) {
+            const dx = e.clientX - x;
+            const containerWidth = resizer.parentNode.getBoundingClientRect().width;
+            let newLeftWidth = ((leftWidth + dx) * 100) / containerWidth;
+
+            if (newLeftWidth < 20) newLeftWidth = 20;
+            if (newLeftWidth > 80) newLeftWidth = 80;
+
+            leftSide.style.width = `${newLeftWidth}%`;
+            myChart.resize();
+        };
+
+        const mouseUpHandler = function () {
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = 'default';
+            leftSide.style.pointerEvents = '';
+            rightSide.style.pointerEvents = '';
+
+            document.removeEventListener('mousemove', mouseMoveHandler);
+            document.removeEventListener('mouseup', mouseUpHandler);
+            myChart.resize();
+        };
+
+        resizer.addEventListener('mousedown', mouseDownHandler);
+
+        window.addEventListener('resize', () => {
+            myChart.resize();
+        });
+    </script>
+</body>
+
+</html>
