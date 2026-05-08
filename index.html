@@ -393,6 +393,25 @@
         }
         const cycleDataObj = calculateCycleData();
 
+        // --- MA calculation ---
+        function calculateMA(data, period) {
+            let ma = [];
+            for (let i = 0; i < data.length; i++) {
+                if (i < period - 1) {
+                    ma.push(null);
+                } else {
+                    let sum = 0;
+                    for (let j = 0; j < period; j++) {
+                        sum += data[i - j];
+                    }
+                    ma.push(sum / period);
+                }
+            }
+            return ma;
+        }
+        const ma10w = calculateMA(sp500Prices, 10); // 10 weeks
+        const ma40w = calculateMA(sp500Prices, 40); // 40 weeks
+
         function getCompareSeries(filterType) {
             let filtered = bearMarkets.filter(bm => filterType === 'all' || bm.type === filterType);
             let series = [];
@@ -510,6 +529,13 @@
 
         var option = {
             grid: commonGrid,
+            legend: {
+                show: true,
+                selectedMode: true,
+                left: 'center',
+                top: 0,
+                data: ['Weekly Close', '10w MA', '40w MA']
+            },
             tooltip: {
                 trigger: 'axis',
                 axisPointer: { type: 'cross' },
@@ -521,6 +547,14 @@
                     if (candle) {
                         tooltipHtml += `<br/>Weekly OHLC: ${formatNumber(candle.open)} / ${formatNumber(candle.high)} / ${formatNumber(candle.low)} / ${formatNumber(candle.close)}`;
                     }
+
+                    params.forEach(p => {
+                        if (p.seriesName === '10w MA' || p.seriesName === '40w MA') {
+                            if (p.value !== null && p.value !== undefined) {
+                                tooltipHtml += `<br/>${p.marker} ${p.seriesName}: ${formatNumber(p.value)}`;
+                            }
+                        }
+                    });
 
                     for (let i = 0; i < bearMarkets.length; i++) {
                         let bm = bearMarkets[i];
@@ -548,7 +582,7 @@
             yAxis: {
                 type: 'log',
                 position: 'right',
-                name: 'S&P 500',
+                name: '',
                 axisLabel: {
                     formatter: function (value) {
                         return formatNumber(value);
@@ -605,6 +639,20 @@
                         },
                         data: getMarkAreaData('large')
                     }
+                },
+                {
+                    name: '10w MA',
+                    type: 'line',
+                    symbol: 'none',
+                    lineStyle: { width: 1.2, opacity: 0.8, color: '#ff9800', type: 'dashed' },
+                    data: ma10w
+                },
+                {
+                    name: '40w MA',
+                    type: 'line',
+                    symbol: 'none',
+                    lineStyle: { width: 1.2, opacity: 0.8, color: '#9c27b0', type: 'dashed' },
+                    data: ma40w
                 }
             ]
         };
@@ -625,7 +673,13 @@
             if (currentChartType === 'price') {
                 myChart.setOption({
                     grid: commonGrid,
-                    legend: { show: false },
+                    legend: {
+                        show: true,
+                        selectedMode: true,
+                        left: 'center',
+                        top: 0,
+                        data: ['Weekly Close', '10w MA', '40w MA']
+                    },
                     toolbox: commonToolbox,
                     dataZoom: commonDataZoom,
                     tooltip: {
@@ -637,6 +691,15 @@
                             if (candle) {
                                 tooltipHtml += `<br/>Weekly OHLC: ${formatNumber(candle.open)} / ${formatNumber(candle.high)} / ${formatNumber(candle.low)} / ${formatNumber(candle.close)}`;
                             }
+
+                            params.forEach(p => {
+                                if (p.seriesName === '10w MA' || p.seriesName === '40w MA') {
+                                    if (p.value !== null && p.value !== undefined) {
+                                        tooltipHtml += `<br/>${p.marker} ${p.seriesName}: ${formatNumber(p.value)}`;
+                                    }
+                                }
+                            });
+
                             for (let i = 0; i < bearMarkets.length; i++) {
                                 let bm = bearMarkets[i];
                                 if (date >= bm.start && date.substring(0, bm.trough.length) <= bm.trough) {
@@ -655,7 +718,7 @@
                     xAxis: { type: 'category', data: sp500Dates, name: '' },
                     yAxis: {
                         type: 'log',
-                        name: 'S&P 500',
+                        name: '',
                         position: 'right',
                         axisLabel: {
                             formatter: function (value) {
@@ -686,6 +749,20 @@
                                 data: getMarkAreaData(activeFilter),
                                 label: { show: labelsVisible }
                             }
+                        },
+                        {
+                            name: '10w MA',
+                            type: 'line',
+                            symbol: 'none',
+                            lineStyle: { width: 1.2, opacity: 0.8, color: '#ff9800', type: 'dashed' },
+                            data: ma10w
+                        },
+                        {
+                            name: '40w MA',
+                            type: 'line',
+                            symbol: 'none',
+                            lineStyle: { width: 1.2, opacity: 0.8, color: '#9c27b0', type: 'dashed' },
+                            data: ma40w
                         }
                     ]
                 }, true);
